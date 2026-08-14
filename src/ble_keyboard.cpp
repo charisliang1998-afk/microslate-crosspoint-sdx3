@@ -24,6 +24,15 @@ static uint8_t keyboardAddressType = 0;
 static uint8_t lastReport[8] = {0};
 static uint8_t inputReportId = 0;   // Non-zero if keyboard prefixes reports with a report ID
 
+// Debounce for BLE-sourced key presses. Physical buttons already get this via
+// InputManager's DEBOUNCE_DELAY; keyboard reports never did. A keyboard's own
+// switch bounce or auto-repeat can deliver two distinct press/release HID
+// transitions for what a user experiences as one press, each of which is
+// individually valid from onKeyboardNotify's edge-detection perspective.
+static uint8_t lastDebouncedKey = 0;
+static unsigned long lastDebouncedKeyMs = 0;
+static constexpr unsigned long KEY_DEBOUNCE_MS = 120;
+
 // NVS storage for persistent pairing
 static Preferences prefs;
 
@@ -129,6 +138,13 @@ static void onKeyboardNotify(NimBLERemoteCharacteristic* pRemChar,
       if (lastReport[j] == newReport[i]) { wasPressed = true; break; }
     }
     if (!wasPressed) {
+      const unsigned long now = millis();
+      if (newReport[i] == lastDebouncedKey && (now - lastDebouncedKeyMs) < KEY_DEBOUNCE_MS) {
+        DBG_PRINTF("  KEY PRESS IGNORED (debounce): 0x%02X\n", newReport[i]);
+        continue;
+      }
+      lastDebouncedKey = newReport[i];
+      lastDebouncedKeyMs = now;
       DBG_PRINTF("  KEY PRESS: 0x%02X mod=0x%02X\n", newReport[i], modifiers);
       enqueueKeyEvent(newReport[i], modifiers, true);
     }
