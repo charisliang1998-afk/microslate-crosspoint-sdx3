@@ -24,8 +24,10 @@ class GfxRenderer {
   };
 
  private:
-  static constexpr size_t BW_BUFFER_CHUNK_SIZE = 8000;  // 8KB chunks to allow for non-contiguous memory
-  static constexpr size_t BW_BUFFER_NUM_CHUNKS = HalDisplay::BUFFER_SIZE / BW_BUFFER_CHUNK_SIZE;
+  // Chunk count fixed (not chunk size) so BUFFER_SIZE always divides evenly, regardless of
+  // panel resolution. ~8KB chunks to allow for non-contiguous memory.
+  static constexpr size_t BW_BUFFER_NUM_CHUNKS = 6;
+  static constexpr size_t BW_BUFFER_CHUNK_SIZE = HalDisplay::BUFFER_SIZE / BW_BUFFER_NUM_CHUNKS;
   static_assert(BW_BUFFER_CHUNK_SIZE * BW_BUFFER_NUM_CHUNKS == HalDisplay::BUFFER_SIZE,
                 "BW buffer chunking does not line up with display buffer size");
 
