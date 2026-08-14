@@ -83,6 +83,11 @@ class InputManager {
   // Button names
   static const char* getButtonName(uint8_t buttonIndex);
 
+  // Raw ADC readings from the last getState() call — for calibrating
+  // ADC_RANGES_1/ADC_RANGES_2 against unmeasured hardware (e.g. X3).
+  int getRawAdc1() const { return lastRawAdc1; }
+  int getRawAdc2() const { return lastRawAdc2; }
+
  private:
   int getButtonFromADC(int adcValue, const int ranges[], int numButtons);
 
@@ -93,6 +98,8 @@ class InputManager {
   unsigned long lastDebounceTime;
   unsigned long buttonPressStart;
   unsigned long buttonPressFinish;
+  int lastRawAdc1 = 0;
+  int lastRawAdc2 = 0;
 
   static constexpr int NUM_BUTTONS_1 = 4;
   static const int ADC_RANGES_1[];

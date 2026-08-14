@@ -410,6 +410,13 @@ static void bleConnectTask(void* param) {
 
   DBG_PRINTLN("[BLE-Task] Setting up HID...");
 
+  {
+    char line[64];
+    snprintf(line, sizeof(line), "[%lu] BLE before HID setup, free heap=%u", millis(),
+             (unsigned)ESP.getFreeHeap());
+    sdAppendLine("/diagnostic.log", line);
+  }
+
   // Step 4: Service discovery + HID subscription (blocks this task)
   if (!setupHidConnection()) {
     DBG_PRINTLN("[BLE-Task] HID setup failed, disconnecting");
@@ -476,6 +483,16 @@ static void startConnectTask() {
     DBG_PRINTLN("[BLE] Connect task already running");
     return;
   }
+
+  // Diagnostic: this device's larger X3 framebuffer leaves less headroom than
+  // the X4 it was ported from, and the connect task below asks for a 20KB
+  // stack on top of whatever else is allocated. Log free heap right before
+  // that ask, so a crash right around here can be correlated with low memory.
+  char line[64];
+  snprintf(line, sizeof(line), "[%lu] BLE connect start, free heap=%u", millis(),
+           (unsigned)ESP.getFreeHeap());
+  sdAppendLine("/diagnostic.log", line);
+
   // 20480 bytes: Logitech has a complex service tree (keyboard + media + battery reports
   // + many descriptors). NimBLE 2.x uses more per-call stack than 1.4.x — 12288 was
   // sufficient before but overflows during full service discovery on the Logitech.

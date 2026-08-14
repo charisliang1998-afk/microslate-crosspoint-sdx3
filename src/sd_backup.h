@@ -24,6 +24,16 @@ static inline bool sdWriteFile(const char* path, const char* content) {
     return written == len;
 }
 
+// Append a line to a file, creating it if needed. Diagnostic-only helper —
+// best-effort, failures are silently ignored so it never affects normal operation.
+static inline void sdAppendLine(const char* path, const char* line) {
+    auto f = SdMan.open(path, O_WRONLY | O_CREAT | O_APPEND);
+    if (!f.isOpen()) return;
+    f.write((const uint8_t*)line, strlen(line));
+    f.write((const uint8_t*)"\n", 1);
+    f.close();
+}
+
 // Parse an integer value from flat JSON: {"key":42,...}
 static inline int jsonGetInt(const char* json, const char* key) {
     char needle[32];

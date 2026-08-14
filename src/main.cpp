@@ -611,6 +611,15 @@ void loop() {
   // --- GPIO first: always poll buttons before anything else ---
   gpio.update();
 
+  // Diagnostic: log raw ADC readings on every button press, so ADC_RANGES_1/2
+  // (currently calibrated from X4 hardware only) can be re-measured for X3.
+  // Best-effort SD write; does not affect normal operation either way.
+  if (gpio.wasAnyPressed()) {
+    char line[96];
+    snprintf(line, sizeof(line), "[%lu] adc1=%d adc2=%d", millis(), gpio.getRawAdc1(), gpio.getRawAdc2());
+    sdAppendLine("/diagnostic.log", line);
+  }
+
   // Control auto-reconnect based on UI state
   static UIState lastState = UIState::MAIN_MENU;
   if (currentState == UIState::BLUETOOTH_SETTINGS) {

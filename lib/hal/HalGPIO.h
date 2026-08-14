@@ -44,6 +44,10 @@ class HalGPIO {
   bool wasAnyReleased() const;
   unsigned long getHeldTime() const;
 
+  // Raw ADC readings — diagnostic-only, for button calibration.
+  int getRawAdc1() const;
+  int getRawAdc2() const;
+
   // Setup wake up GPIO and enter deep sleep
   void startDeepSleep();
 

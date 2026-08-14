@@ -67,6 +67,9 @@ uint8_t InputManager::getState() {
     state |= (1 << (button2 + 4));
   }
 
+  lastRawAdc1 = adcValue1;
+  lastRawAdc2 = adcValue2;
+
   // Read power button (digital, active LOW)
   if (digitalRead(POWER_BUTTON_PIN) == LOW) {
     state |= (1 << BTN_POWER);

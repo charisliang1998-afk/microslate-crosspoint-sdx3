@@ -25,6 +25,10 @@ bool HalGPIO::wasAnyPressed() const { return inputMgr.wasAnyPressed(); }
 
 bool HalGPIO::wasReleased(uint8_t buttonIndex) const { return inputMgr.wasReleased(buttonIndex); }
 
+int HalGPIO::getRawAdc1() const { return inputMgr.getRawAdc1(); }
+
+int HalGPIO::getRawAdc2() const { return inputMgr.getRawAdc2(); }
+
 bool HalGPIO::wasAnyReleased() const { return inputMgr.wasAnyReleased(); }
 
 unsigned long HalGPIO::getHeldTime() const { return inputMgr.getHeldTime(); }
