@@ -5,6 +5,10 @@
 
 void HalGPIO::begin() {
   inputMgr.begin();
+  // X3: power the SD rail before SPI comes up. Active HIGH; stock firmware does
+  // digitalWrite(13, HIGH) in setup() and LOW on every deep sleep.
+  pinMode(SD_POWER_ENABLE, OUTPUT);
+  digitalWrite(SD_POWER_ENABLE, HIGH);
   SPI.begin(EPD_SCLK, SPI_MISO, EPD_MOSI, EPD_CS);
   // BAT_GPIO0 is configured for ADC via adc1_config_channel_atten in InputManager::begin()
   // — do NOT call pinMode() here as it reconfigures the pin as digital input in dual framework
@@ -31,6 +35,10 @@ void HalGPIO::startDeepSleep() {
     delay(50);
     inputMgr.update();
   }
+  // X3: cut the SD card rail before sleeping. Without this the card stays
+  // powered through deep sleep and quietly drains the battery.
+  digitalWrite(SD_POWER_ENABLE, LOW);
+
   // Arm the wakeup trigger *after* the button is released
   esp_deep_sleep_enable_gpio_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_GPIO_WAKEUP_GPIO_LOW);
   // Enter Deep Sleep
@@ -106,8 +114,12 @@ int HalGPIO::getBatteryPercentage() const {
 }
 
 bool HalGPIO::isUsbConnected() const {
-  // U0RXD/GPIO20 reads HIGH when USB is connected
-  return digitalRead(UART0_RXD) == HIGH;
+  // X3 has no USB-C port - it charges over a magnetic pogo-pin connector, and
+  // the X4's GPIO20 USB-detect line carries no equivalent signal. Reporting
+  // "never charging" is the safe answer: it keeps the battery smoothing and
+  // ADC settling logic on its normal (non-charging) path rather than trusting
+  // a floating pin.
+  return false;
 }
 
 HalGPIO::WakeupReason HalGPIO::getWakeupReason() const {

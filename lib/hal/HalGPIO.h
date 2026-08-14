@@ -4,7 +4,7 @@
 #include <BatteryMonitor.h>
 #include <InputManager.h>
 
-// Display SPI pins (custom pins for XteinkX4, not hardware SPI defaults)
+// Display SPI pins. Identical on X3 and X4 - only the panel controller differs.
 #define EPD_SCLK 8   // SPI Clock
 #define EPD_MOSI 10  // SPI MOSI (Master Out Slave In)
 #define EPD_CS 21    // Chip Select
@@ -14,7 +14,13 @@
 
 #define SPI_MISO 7  // SPI MISO, shared between SD card and display (Master In Slave Out)
 
-#define BAT_GPIO0 0  // Battery voltage
+#define BAT_GPIO0 0  // Battery voltage (ADC)
+
+// X3 ONLY: GPIO13 is the SD-card power rail enable (ACTIVE HIGH).
+// On the X4 this same pin is the battery latch. Driving it LOW on an X3 cuts
+// power to the SD card. Stock X3 firmware sets it HIGH at boot and LOW on every
+// deep sleep; we do the same. Do not reuse X4 latch logic here.
+#define SD_POWER_ENABLE 13
 
 #define UART0_RXD 20  // Used for USB connection detection
 
