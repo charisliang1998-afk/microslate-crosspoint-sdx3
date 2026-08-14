@@ -11,6 +11,8 @@
 #include <EpdFont.h>
 #include <EpdFontFamily.h>
 
+#include <initializer_list>
+
 // External variables
 extern bool autoReconnectEnabled;
 extern bool darkMode;
@@ -51,10 +53,6 @@ static EpdFontFamily ns12Family(&ns12Regular, &ns12Bold);
 static EpdFont u10Regular(&ubuntu_10_regular);
 static EpdFont u10Bold(&ubuntu_10_bold);
 static EpdFontFamily u10Family(&u10Regular, &u10Bold);
-
-// OTA app detection (defined in main.cpp)
-extern OtaAppEntry otaApps[];
-extern int otaAppCount;
 
 // Extern shared state (defined in main.cpp)
 extern UIState currentState;
@@ -142,6 +140,34 @@ static void clippedFillRect(GfxRenderer& r, int x, int y, int w, int h,
   if (w > 0 && h > 0) r.fillRect(x, y, w, h, state);
 }
 
+// Draw a row of footer hint labels (e.g. "Enter: Select", "Esc: Back") centered
+// as a group over the device's two physical buttons, which sit bottom-center on
+// the case rather than spread across the full screen width.
+static void drawFooterHints(GfxRenderer& r, int y, bool tc,
+                            std::initializer_list<const char*> labels) {
+  constexpr int labelGap = 24;
+  constexpr int maxLabels = 4;
+  int widths[maxLabels];
+  int n = 0;
+  int totalW = 0;
+  for (const char* label : labels) {
+    if (n >= maxLabels) break;
+    widths[n] = r.getTextWidth(FONT_SMALL, label);
+    totalW += widths[n] + (n > 0 ? labelGap : 0);
+    n++;
+  }
+  int sw = r.getScreenWidth();
+  int x = (sw - totalW) / 2;
+  if (x < 10) x = 10;
+  int i = 0;
+  for (const char* label : labels) {
+    if (i >= n) break;
+    drawClippedText(r, FONT_SMALL, x, y, label, widths[i] + 5, tc);
+    x += widths[i] + labelGap;
+    i++;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helper: draw battery percentage in top-right
 // ---------------------------------------------------------------------------
@@ -179,12 +205,12 @@ void drawMainMenu(GfxRenderer& renderer, HalGPIO& gpio) {
   // Title
   renderer.drawCenteredText(FONT_BODY, 30, "MicroSlate", tc, EpdFontFamily::BOLD);
 
-  // Menu items (base + dynamically detected OTA apps)
+  // Menu items
   static const char* baseMenuItems[] = {"Browse Files", "New Note", "Settings", "Sync"};
-  int menuCount = 4 + otaAppCount;
+  constexpr int menuCount = 4;
   for (int i = 0; i < menuCount; i++) {
     int yPos = 90 + (i * 45);
-    const char* label = (i < 4) ? baseMenuItems[i] : otaApps[i - 4].name;
+    const char* label = baseMenuItems[i];
     if (i == mainMenuSelection) {
       clippedFillRect(renderer, 5, yPos - 5, sw - 10, 35, tc);
       drawClippedText(renderer, FONT_UI, 20, yPos, label, sw - 40, !tc);
@@ -197,18 +223,7 @@ void drawMainMenu(GfxRenderer& renderer, HalGPIO& gpio) {
   constexpr int bm = 60;
   if (sh > bm + 40) {
     clippedLine(renderer, 10, sh - bm, sw - 10, sh - bm, tc);
-    // Split into two labels centered as a pair over the device's two physical
-    // buttons, which sit bottom-center on the X3's case (different position
-    // than the X4's, which this single-line hint was originally laid out for).
-    const char* navLabel = "Arrows: Navigate";
-    const char* selectLabel = "Enter: Select";
-    int navW = renderer.getTextWidth(FONT_SMALL, navLabel);
-    int selectW = renderer.getTextWidth(FONT_SMALL, selectLabel);
-    constexpr int labelGap = 24;
-    int pairX = (sw - (navW + labelGap + selectW)) / 2;
-    if (pairX < 20) pairX = 20;
-    drawClippedText(renderer, FONT_SMALL, pairX, sh - bm + 12, navLabel, navW + 5, tc);
-    drawClippedText(renderer, FONT_SMALL, pairX + navW + labelGap, sh - bm + 12, selectLabel, selectW + 5, tc);
+    drawFooterHints(renderer, sh - bm + 12, tc, {"Arrows: Navigate", "Enter: Select"});
     drawBleStatus(renderer, 20, sh - bm + 28);
   }
   drawBattery(renderer, gpio);
@@ -259,7 +274,7 @@ void drawFileBrowser(GfxRenderer& renderer, HalGPIO& gpio) {
   // Footer
   clippedLine(renderer, 5, sh - footerH - 2, sw - 5, sh - footerH - 2, tc);
   if (deleteConfirmPending && fc > 0) {
-    drawClippedText(renderer, FONT_SMALL, 10, sh - footerH + 4, "Delete? Enter:Yes  Esc:No", 0, tc);
+    drawFooterHints(renderer, sh - footerH + 4, tc, {"Delete?", "Enter:Yes", "Esc:No"});
   } else {
     drawClippedText(renderer, FONT_SMALL, 10, sh - footerH + 4,
                     "Ctrl+N:Title  Ctrl+D:Delete", 0, tc);
@@ -501,7 +516,7 @@ void drawRenameScreen(GfxRenderer& renderer, HalGPIO& gpio) {
 
   // Footer
   clippedLine(renderer, 5, sh - 36, sw - 5, sh - 36, tc);
-  drawClippedText(renderer, FONT_SMALL, 10, sh - 30, "Enter: Confirm   Esc: Cancel", 0, tc);
+  drawFooterHints(renderer, sh - 30, tc, {"Enter: Confirm", "Esc: Cancel"});
 
   renderer.beginRefresh(HalDisplay::FAST_REFRESH);
 }
@@ -581,8 +596,7 @@ void drawSettingsMenu(GfxRenderer& renderer, HalGPIO& gpio) {
   constexpr int bm = 60;
   if (sh > bm + 30) {
     clippedLine(renderer, 10, sh - bm, sw - 10, sh - bm, !darkMode);
-    drawClippedText(renderer, FONT_SMALL, 20, sh - bm + 12,
-                    "Arrows:Navigate  Enter:Change  Esc:Back", 0, !darkMode);
+    drawFooterHints(renderer, sh - bm + 12, !darkMode, {"Arrows:Navigate", "Enter:Change", "Esc:Back"});
   }
 
   renderer.beginRefresh(HalDisplay::FAST_REFRESH);
@@ -714,8 +728,8 @@ void drawBluetoothSettings(GfxRenderer& renderer, HalGPIO& gpio) {
   constexpr int bm = 60;
   if (sh > bm + 30) {
     clippedLine(renderer, 10, sh - bm, sw - 10, sh - bm, tc);
-    drawClippedText(renderer, FONT_SMALL, 10, sh - bm + 8,  "Enter:Connect  Right:Scan", 0, tc);
-    drawClippedText(renderer, FONT_SMALL, 10, sh - bm + 22, "Left:Disconnect  Esc:Back", 0, tc);
+    drawFooterHints(renderer, sh - bm + 8, tc, {"Enter:Connect", "Right:Scan"});
+    drawFooterHints(renderer, sh - bm + 22, tc, {"Left:Disconnect", "Esc:Back"});
   }
 
   renderer.beginRefresh(HalDisplay::FAST_REFRESH);
@@ -768,8 +782,8 @@ void drawPairedKeyboardsMenu(GfxRenderer& renderer, HalGPIO& gpio) {
   constexpr int bm = 52;
   if (sh > bm + 30) {
     clippedLine(renderer, 10, sh - bm, sw - 10, sh - bm, tc);
-    drawClippedText(renderer, FONT_SMALL, 10, sh - bm + 8,  "Enter:Connect  D:Forget", 0, tc);
-    drawClippedText(renderer, FONT_SMALL, 10, sh - bm + 22, "Left:Disconnect  Esc:Back", 0, tc);
+    drawFooterHints(renderer, sh - bm + 8, tc, {"Enter:Connect", "D:Forget"});
+    drawFooterHints(renderer, sh - bm + 22, tc, {"Left:Disconnect", "Esc:Back"});
   }
 
   renderer.beginRefresh(HalDisplay::FAST_REFRESH);
@@ -818,7 +832,7 @@ void drawSyncScreen(GfxRenderer& renderer, HalGPIO& gpio) {
       if (nc == 0) {
         const char* st = getSyncStatusText();
         drawClippedText(renderer, FONT_UI, 20, 60, st[0] ? st : "No networks found", sw - 40, tc);
-        drawClippedText(renderer, FONT_SMALL, 20, 90, "Enter: Rescan  Esc: Back", 0, tc);
+        drawFooterHints(renderer, 90, tc, {"Enter: Rescan", "Esc: Back"});
       } else {
         drawClippedText(renderer, FONT_SMALL, 10, 38, "Select network:", 0, tc);
 
@@ -856,8 +870,7 @@ void drawSyncScreen(GfxRenderer& renderer, HalGPIO& gpio) {
       // Footer
       constexpr int bm = 28;
       clippedLine(renderer, 10, sh - bm - 2, sw - 10, sh - bm - 2, tc);
-      drawClippedText(renderer, FONT_SMALL, 10, sh - bm + 4,
-                      "*=encrypted +=saved  Enter:Select  Esc:Back", 0, tc);
+      drawFooterHints(renderer, sh - bm + 4, tc, {"*=encrypted +=saved", "Enter:Select", "Esc:Back"});
       break;
     }
 
@@ -884,14 +897,14 @@ void drawSyncScreen(GfxRenderer& renderer, HalGPIO& gpio) {
       if (cursorX + cursorW < sw)
         renderer.fillRect(cursorX, 66, cursorW, 20, tc);
 
-      drawClippedText(renderer, FONT_SMALL, 20, 110, "Enter: Connect   Esc: Cancel", 0, tc);
+      drawFooterHints(renderer, 110, tc, {"Enter: Connect", "Esc: Cancel"});
       break;
     }
 
     case SyncState::CONNECTING: {
       const char* st = getSyncStatusText();
       drawClippedText(renderer, FONT_UI, 20, 80, st, sw - 40, tc);
-      drawClippedText(renderer, FONT_SMALL, 20, 110, "Esc: Cancel", 0, tc);
+      drawFooterHints(renderer, 110, tc, {"Esc: Cancel"});
       break;
     }
 
@@ -950,9 +963,9 @@ void drawSyncScreen(GfxRenderer& renderer, HalGPIO& gpio) {
       // Footer
       constexpr int bm = 28;
       clippedLine(renderer, 10, sh - bm - 2, sw - 10, sh - bm - 2, tc);
-      char countStr[32];
-      snprintf(countStr, sizeof(countStr), "Sent: %d   Esc: Cancel", sent);
-      drawClippedText(renderer, FONT_SMALL, 10, sh - bm + 4, countStr, sw - 20, tc);
+      char countStr[16];
+      snprintf(countStr, sizeof(countStr), "Sent: %d", sent);
+      drawFooterHints(renderer, sh - bm + 4, tc, {countStr, "Esc: Cancel"});
       break;
     }
 
@@ -966,7 +979,7 @@ void drawSyncScreen(GfxRenderer& renderer, HalGPIO& gpio) {
 
     case SyncState::CONNECT_FAILED: {
       drawClippedText(renderer, FONT_UI, 20, 80, "Connection failed", sw - 40, tc);
-      drawClippedText(renderer, FONT_SMALL, 20, 110, "Enter: Retry   Esc: Back", 0, tc);
+      drawFooterHints(renderer, 110, tc, {"Enter: Retry", "Esc: Back"});
       break;
     }
 
@@ -975,14 +988,14 @@ void drawSyncScreen(GfxRenderer& renderer, HalGPIO& gpio) {
       drawClippedText(renderer, FONT_SMALL, 20, 50, "Connected!", 0, tc, EpdFontFamily::BOLD);
       drawClippedText(renderer, FONT_UI, 20, 80, ip, sw - 40, tc);
       drawClippedText(renderer, FONT_SMALL, 20, 120, "Save password?", 0, tc, EpdFontFamily::BOLD);
-      drawClippedText(renderer, FONT_SMALL, 20, 145, "Enter/Up: Yes   Down/Esc: No", 0, tc);
+      drawFooterHints(renderer, 145, tc, {"Enter/Up: Yes", "Down/Esc: No"});
       break;
     }
 
     case SyncState::FORGET_PROMPT: {
       drawClippedText(renderer, FONT_UI, 20, 80, "Saved password failed", sw - 40, tc);
       drawClippedText(renderer, FONT_SMALL, 20, 120, "Forget saved password?", 0, tc, EpdFontFamily::BOLD);
-      drawClippedText(renderer, FONT_SMALL, 20, 145, "Enter/Up: Yes   Down/Esc: No", 0, tc);
+      drawFooterHints(renderer, 145, tc, {"Enter/Up: Yes", "Down/Esc: No"});
       break;
     }
   }
