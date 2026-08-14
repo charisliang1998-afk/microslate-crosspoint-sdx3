@@ -101,6 +101,12 @@ class EInkDisplay {
   bool oldPlaneValid = false;
   uint8_t initialFullSyncsRemaining = 1;
 
+  // Many consecutive FAST_REFRESH differential updates (e.g. rapid menu
+  // navigation) let residual charge accumulate pixel-by-pixel until text
+  // visibly smears/overlaps. Force a full sync periodically to clear it.
+  static constexpr uint8_t FAST_REFRESH_GHOST_LIMIT = 12;
+  uint8_t consecutiveFastRefreshes = 0;
+
   enum RefreshState { IDLE, REFRESHING };
   RefreshState _refreshState = IDLE;
   RefreshMode _pendingMode = FAST_REFRESH;

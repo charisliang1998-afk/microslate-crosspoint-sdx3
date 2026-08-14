@@ -403,8 +403,11 @@ void EInkDisplay::beginRefresh(RefreshMode mode, const bool turnOffScreen) {
 
   const bool fastMode = (mode == FAST_REFRESH);
   const bool halfMode = (mode == HALF_REFRESH);
-  const bool doFullSync = (!fastMode && !halfMode) || !oldPlaneValid || initialFullSyncsRemaining > 0;
+  const bool ghostLimitHit = fastMode && consecutiveFastRefreshes >= FAST_REFRESH_GHOST_LIMIT;
+  const bool doFullSync =
+      (!fastMode && !halfMode) || !oldPlaneValid || initialFullSyncsRemaining > 0 || ghostLimitHit;
   const bool doHalfSync = halfMode && !doFullSync;
+  consecutiveFastRefreshes = (doFullSync || doHalfSync) ? 0 : consecutiveFastRefreshes + 1;
 
   if (doFullSync) {
     // OEM full bank driven from a white baseline in DTM1.
