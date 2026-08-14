@@ -197,7 +197,18 @@ void drawMainMenu(GfxRenderer& renderer, HalGPIO& gpio) {
   constexpr int bm = 60;
   if (sh > bm + 40) {
     clippedLine(renderer, 10, sh - bm, sw - 10, sh - bm, tc);
-    drawClippedText(renderer, FONT_SMALL, 20, sh - bm + 12, "Arrows: Navigate  Enter: Select", 0, tc);
+    // Split into two labels centered as a pair over the device's two physical
+    // buttons, which sit bottom-center on the X3's case (different position
+    // than the X4's, which this single-line hint was originally laid out for).
+    const char* navLabel = "Arrows: Navigate";
+    const char* selectLabel = "Enter: Select";
+    int navW = renderer.getTextWidth(FONT_SMALL, navLabel);
+    int selectW = renderer.getTextWidth(FONT_SMALL, selectLabel);
+    constexpr int labelGap = 24;
+    int pairX = (sw - (navW + labelGap + selectW)) / 2;
+    if (pairX < 20) pairX = 20;
+    drawClippedText(renderer, FONT_SMALL, pairX, sh - bm + 12, navLabel, navW + 5, tc);
+    drawClippedText(renderer, FONT_SMALL, pairX + navW + labelGap, sh - bm + 12, selectLabel, selectW + 5, tc);
     drawBleStatus(renderer, 20, sh - bm + 28);
   }
   drawBattery(renderer, gpio);
