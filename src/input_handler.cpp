@@ -40,11 +40,6 @@ static UIState renameReturnState = UIState::FILE_BROWSER;
 // Forward declaration
 static void openTitleEdit(const char* currentTitle, UIState returnTo);
 
-// OTA app detection (defined in main.cpp)
-extern OtaAppEntry otaApps[];
-extern int otaAppCount;
-void switchToOtaApp(int index);
-
 // --- Shared UI state (defined in main.cpp) ---
 extern UIState currentState;
 extern int mainMenuSelection;
@@ -298,7 +293,7 @@ static void dispatchEvent(const KeyEvent& event) {
 
   switch (currentState) {
     case UIState::MAIN_MENU: {
-      int menuCount = 4 + otaAppCount;
+      int menuCount = 4;
       if (event.keyCode == HID_KEY_DOWN) {
         mainMenuSelection = (mainMenuSelection + 1) % menuCount;
         screenDirty = true;
@@ -320,8 +315,6 @@ static void dispatchEvent(const KeyEvent& event) {
           wifiSyncStart();
           currentState = UIState::WIFI_SYNC;
           screenDirty = true;
-        } else if (mainMenuSelection >= 4) {
-          switchToOtaApp(mainMenuSelection - 4);
         }
       }
       break;
